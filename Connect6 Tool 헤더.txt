@@ -1,0 +1,74 @@
+#ifndef _CONNECT_6_TOOL_H_
+#define _CONNECT_6_TOOL_H_
+
+#include <cinttypes>
+
+#ifndef SAFE_DELETE
+	#define SAFE_DELETE(pointer) { if (pointer != NULL) delete pointer; pointer = NULL; }
+#endif
+
+static const int32_t BOARD_SIZE = 19;
+static const int32_t MAX_TURN   = BOARD_SIZE * BOARD_SIZE;
+
+enum class STATUS : uint8_t
+{
+	NONE     = 0,
+	EMPTY    = 69,
+	PLAYER1  = 66,
+	PLAYER2  = 87,
+	BLOCKING = 75
+};
+
+enum class TURN : uint8_t
+{
+	NONE,
+	PLAYER1	 = 66,
+	PLAYER2	 = 87
+};
+
+enum class GAME_RESULT : uint8_t
+{
+	NONE,
+	PLAYER1_WIN,
+	PLAYER2_WIN,
+	DRAW
+};
+
+class Connect6
+{
+private:
+	Connect6() { }
+	
+public:
+	~Connect6() { SAFE_DELETE(Connect6::instance); }
+
+public:
+	static Connect6* Initialize();
+	static Connect6* GetInstance();
+
+public:
+	void Display();
+	TURN Start(const uint32_t blockingNumber = 2);
+	
+public:
+	auto GetBoard() { return m_board; }
+	auto GetCurrentTurn() { return m_currentTurn; }
+	auto GetTurnCount() { return m_turnCount - m_blockingNumber; }s
+	STATUS IsFree(uint32_t iy, uint32_t ix);
+	GAME_RESULT Placement();											//두 턴 착수 실행함수
+	void OnePlacement(uint32_t iy, uint32_t ix);						//한개의 돌 착수 함수
+	void TurnChange();
+	GAME_RESULT Judgement(uint32_t iy, uint32_t ix);					//게임 끝 판정 함수
+	uint32_t CheckIndex(uint32_t iy, uint32_t ix);
+private:
+	static Connect6* instance;
+
+private:
+	STATUS  m_board[BOARD_SIZE][BOARD_SIZE];
+	int32_t m_blockingNumber;
+	TURN    m_currentTurn;
+	int32_t m_turnCount;
+	GAME_RESULT m_result;
+};
+
+#endif

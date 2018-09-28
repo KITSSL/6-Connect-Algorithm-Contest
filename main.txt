@@ -1,0 +1,31 @@
+#include "Connect 6 Tool.h"
+
+int main(void)
+{
+	Connect6* connect6 = Connect6::Initialize();
+	TURN turn;
+	GAME_RESULT result=GAME_RESULT::NONE;
+	turn = connect6->Start();
+
+	while (result==GAME_RESULT::NONE){
+		connect6->Display();
+		result=connect6->Placement();
+	} 
+
+	switch (result)
+	{
+	case GAME_RESULT::NONE:
+		break;
+	case GAME_RESULT::PLAYER1_WIN:
+		break;
+	case GAME_RESULT::PLAYER2_WIN:
+		break;
+	case GAME_RESULT::DRAW:
+		break;
+	default:
+		connect6->Display();
+		break;
+	}
+	
+	return 0;
+}

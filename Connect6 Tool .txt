@@ -1,0 +1,179 @@
+#include "Connect 6 Tool.h"
+
+#include <iostream>
+#include <cassert>
+#include <cstdio>
+#include <cstring>
+#include <random>
+#include <string>
+
+Connect6* Connect6::instance;
+
+Connect6* Connect6::Initialize()
+{
+	assert(Connect6::instance == NULL);
+
+	Connect6::instance = new Connect6();
+
+	return Connect6::instance;
+}
+
+Connect6* Connect6::GetInstance()
+{
+	assert(Connect6::instance != NULL);
+
+	return Connect6::instance;
+}
+
+void Connect6::Display()
+{
+	std::string colIndex = "    A B C D E F G H I J K L M N O P Q R S\n";
+	std::string divLine  = "  +---------------------------------------+\n";
+
+	fwrite(colIndex.data(), colIndex.size(), 1, stdout);
+	fwrite(divLine.data(), divLine.size(), 1, stdout);
+
+	for (int iy = 0; iy < BOARD_SIZE; ++iy)
+	{
+		fwrite(std::to_string(iy).data(), 2, 1, stdout);
+		fwrite(std::string("  ").data(), 2, 1, stdout);
+
+		for (int ix = 0; ix < BOARD_SIZE; ++ix)
+			fwrite(std::string(static_cast<char>(m_board[iy][ix]) + std::string(" ")).data(), 2, 1, stdout);
+
+		fwrite("\n", 1, 1, stdout);
+	}
+
+	fwrite(divLine.data(), divLine.size(), 1, stdout);
+	fwrite("\n", 1, 1, stdout);
+
+	switch (GetCurrentTurn())
+	{
+	case TURN::PLAYER1:
+		fwrite("PLAYER 1의 차례\n", 16, 1, stdout);
+		break;
+	case TURN::PLAYER2:
+		fwrite("PLAYER 1의 차례\n", 16, 1, stdout);
+		break;
+	default:
+		break;
+	}
+
+}
+
+TURN Connect6::Start(const uint32_t blockingNumber)
+{
+	assert(Connect6::instance != NULL);
+	assert(blockingNumber >= 0);
+
+	std::random_device              randomDevice;
+	std::mt19937                    randomEngine(randomDevice());
+	std::uniform_int_distribution<> turnDistribution(0, 1);
+	std::uniform_int_distribution<> blockingDistribution(0, BOARD_SIZE - 1);
+
+	memset(m_board, static_cast<int>(STATUS::EMPTY), sizeof(m_board));
+	for (uint32_t index = 0; index < blockingNumber; ++index)
+		m_board[blockingDistribution(randomEngine)][blockingDistribution(randomEngine)] = STATUS::BLOCKING;
+
+	m_blockingNumber = blockingNumber;
+	m_currentTurn    = (turnDistribution(randomEngine) == 0) ? (TURN::PLAYER1) : (TURN::PLAYER2);
+	m_turnCount      = blockingNumber;
+
+	return m_currentTurn;
+}
+
+STATUS Connect6::IsFree(uint32_t iy, uint32_t ix) {
+	return m_board[iy][ix];
+}
+
+GAME_RESULT Connect6::Placement(){
+	uint32_t iy[2], ix[2];
+	GAME_RESULT result;
+
+	for (uint32_t index = 0; index < 2; index++) {
+		std::cout <<index+1 << "번 째 좌표 입력 :";
+		std::cin >> iy[index] >> ix[index];
+		if (IsFree(iy[index], ix[index]) == STATUS::EMPTY) {
+			OnePlacement(iy[index], ix[index]);
+			result = Judgement(iy[index], ix[index]);
+			if (GAME_RESULT::NONE != result) return result;
+		}
+		else {
+			std::cout << "(" << iy[index] << "," << ix[index] << ")는 유효하지 않은 좌표입니다. 입력 예시 ex) (x,y) -> x y\n";
+			index--;
+		}
+	}
+	
+	TurnChange();
+	return result;
+}
+
+void Connect6::OnePlacement(uint32_t iy, uint32_t ix) {
+	TURN current_turn = GetCurrentTurn();
+	m_board[iy][ix] = (STATUS)current_turn;
+	m_turnCount++;
+	return;
+}
+
+void Connect6::TurnChange(){
+	m_currentTurn = (m_currentTurn == TURN::PLAYER1) ? TURN::PLAYER2 : TURN::PLAYER1;
+	return;
+}
+
+GAME_RESULT Connect6::Judgement(uint32_t iy, uint32_t ix){
+	uint32_t temp_iy;
+	uint32_t temp_ix;
+
+	uint32_t y_direction[8] = {-1,1,0,0,-1,1,-1,1};
+	uint32_t x_direction[8] = {0,0,-1,1,1,-1,-1,1};
+	uint32_t connect_count  = 0;
+	STATUS center		    = m_board[iy][ix];
+
+	for (uint32_t index = 0; index < 8; index++) {
+		temp_iy = iy;
+		temp_ix = ix;
+		while ( CheckIndex(temp_iy,temp_ix)) {
+			if (m_board[temp_iy][temp_ix] == center || m_board[temp_iy][temp_ix] == STATUS::BLOCKING) {
+				connect_count++;
+
+				temp_iy += y_direction[index];
+				temp_ix += x_direction[index];
+			}
+			else {
+				temp_iy = iy + y_direction[index+1];
+				temp_ix = ix + x_direction[index+1];
+				break;
+			}
+		}
+		index++;
+
+		while ( CheckIndex(temp_iy, temp_ix)) {
+			if (m_board[temp_iy][temp_ix] == center || m_board[temp_iy][temp_ix] == STATUS::BLOCKING) {
+				connect_count++;
+
+				temp_iy += y_direction[index];
+				temp_ix += x_direction[index];
+			}
+			else {
+				temp_iy = iy;
+				temp_ix = ix;
+				break;
+			}
+		}
+
+		if (connect_count == 6) {
+			switch (GetCurrentTurn()) {
+			case TURN::PLAYER1: return GAME_RESULT::PLAYER1_WIN;
+			case TURN::PLAYER2: return GAME_RESULT::PLAYER2_WIN;
+			}
+		}
+
+		connect_count = 0;
+	}
+	if (GetTurnCount() == 361) return GAME_RESULT::DRAW;
+	return GAME_RESULT::NONE;
+}
+
+uint32_t Connect6::CheckIndex(uint32_t iy, uint32_t ix){
+	return (iy >= 0 && ix >= 0 && iy < BOARD_SIZE && ix < BOARD_SIZE);
+}
